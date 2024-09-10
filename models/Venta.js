@@ -1,6 +1,5 @@
 import { DataTypes } from 'sequelize';
 import sequelize from '../config/database.js';
-import Producto from './Producto.js';
 
 const Venta = sequelize.define('Venta', {
     id: {
@@ -12,7 +11,7 @@ const Venta = sequelize.define('Venta', {
         type: DataTypes.INTEGER,
         allowNull: false,
         references: {
-            model: Producto,
+            model: 'Productos', // Nombre de la tabla en la base de datos
             key: 'id'
         }
     },
@@ -32,5 +31,10 @@ const Venta = sequelize.define('Venta', {
     timestamps: true,
     tableName: 'Ventas'
 });
+
+// Asignar la relación en otro archivo para evitar problemas de importación circular
+Venta.associate = models => {
+    Venta.belongsTo(models.Producto, { foreignKey: 'producto_id' });
+};
 
 export default Venta;

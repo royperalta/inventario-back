@@ -67,4 +67,37 @@ router.get('/total-ventas', authMiddleware, async (req, res) => {
     }
 });
 
+// Ruta para obtener el total vendido, invertido y ganado por producto
+router.get('/detalles/:id', authMiddleware, async (req, res) => {
+    try {
+        const { id } = req.params;
+
+        // Obtener el producto
+        const producto = await Producto.findByPk(id);
+        if (!producto) {
+            return res.status(404).json({ error: 'Producto no encontrado' });
+        }
+
+        // Obtener las ventas del producto
+        const ventas = await Venta.findAll({
+            where: { producto_id: id }
+        });
+
+        // Calcular totales
+        const cantidadVendida = ventas.reduce((sum, venta) => sum + venta.cantidad, 0);
+        const totalInvertido = cantidadVendida * producto.precio_compra;
+        const totalGanado = cantidadVendida * (producto.precio_venta - producto.precio_compra);
+
+        res.json({
+            producto: producto.nombre,
+            cantidadVendida,
+            totalInvertido: totalInvertido.toFixed(2),
+            totalGanado: totalGanado.toFixed(2)
+        });
+    } catch (error) {
+        console.error('Error al obtener detalles de las ventas:', error);
+        res.status(500).json({ error: 'Error al obtener detalles de las ventas' });
+    }
+});
+
 export default router;

@@ -9,6 +9,7 @@ const router = express.Router();
 
 const users = [
     { id: 1, username: 'admin', password: bcrypt.hashSync(process.env.PASSWORD, 10) },
+    { id: 2, username: 'alicia', password: bcrypt.hashSync(process.env.PASSWORD, 10) },
 ];
 
 router.post('/login', (req, res) => {
@@ -29,7 +30,7 @@ router.post('/login', (req, res) => {
     const token = jwt.sign(
         { id: user.id, username: user.username },
         process.env.JWT_SECRET,
-        { expiresIn: '1h' }
+        { expiresIn: '30d' }
     );
 
     res.json({ token });

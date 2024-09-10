@@ -1,8 +1,6 @@
 import { DataTypes } from 'sequelize';
 import sequelize from '../config/database.js';
 
-
-
 const Producto = sequelize.define('Producto', {
     id: {
         type: DataTypes.INTEGER,
@@ -38,12 +36,5 @@ const Producto = sequelize.define('Producto', {
         }
     }
 });
-
-
-
-Producto.prototype.calcularGanancia = function() {
-    return (this.precio_venta - this.precio_compra) * this.stock;
-};
-
 
 export default Producto;

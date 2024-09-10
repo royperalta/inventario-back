@@ -1,6 +1,6 @@
 import express from 'express';
 import Producto from '../models/Producto.js';
-
+import Venta from '../models/Venta.js'
 const router = express.Router();
 
 // Ruta para crear o actualizar un producto
@@ -39,10 +39,13 @@ router.get('/', async (req, res) => {
         const productos = await Producto.findAll();
 
         // Incluir la ganancia calculada en cada producto
-        const productosConGanancia = productos.map(producto => ({
-            ...producto.toJSON(),
-            ganancia: producto.calcularGanancia()
-        }));
+        const productosConGanancia = productos.map(producto => {
+            const ganancia = (producto.precio_venta - producto.precio_compra) * producto.stock;
+            return {
+                ...producto.toJSON(),
+                ganancia
+            };
+        });
 
         res.json(productosConGanancia);
     } catch (error) {
@@ -83,8 +86,6 @@ router.put('/actualizar/:id', async (req, res) => {
     }
 });
 
-
-
 // Ruta para obtener el reporte de ganancias esperadas
 router.get('/ganancias-esperadas', async (req, res) => {
     try {
@@ -92,9 +93,25 @@ router.get('/ganancias-esperadas', async (req, res) => {
 
         let gananciasTotales = 0;
 
-        productos.forEach(producto => {
-            gananciasTotales += producto.calcularGanancia();
-        });
+        for (const producto of productos) {
+            // Obtener el historial de ventas del producto
+            const ventas = await Venta.findAll({
+                where: { producto_id: producto.id }
+            });
+
+            let totalVendido = 0;
+            let totalInvertido = 0;
+            let totalGanado = 0;
+
+            ventas.forEach(venta => {
+                totalVendido += venta.total;
+                totalInvertido += producto.precio_compra * venta.cantidad;
+            });
+
+            totalGanado = totalVendido - totalInvertido;
+
+            gananciasTotales += totalGanado;
+        }
 
         res.json({ gananciasEsperadas: gananciasTotales.toFixed(2) });
     } catch (error) {
@@ -103,6 +120,35 @@ router.get('/ganancias-esperadas', async (req, res) => {
     }
 });
 
+
+// Ruta para obtener la cantidad vendida, invertida y ganada por producto
+router.get('/detalles/:id', async (req, res) => {
+    try {
+        const { id } = req.params;
+
+        const producto = await Producto.findByPk(id);
+        if (!producto) {
+            return res.status(404).json({ error: 'Producto no encontrado' });
+        }
+
+        const ventas = await Venta.findAll({
+            where: { producto_id: id }
+        });
+
+        const cantidadVendida = ventas.reduce((sum, venta) => sum + venta.cantidad, 0);
+        const totalInvertido = cantidadVendida * producto.precio_compra;
+        const totalGanado = cantidadVendida * (producto.precio_venta - producto.precio_compra);
+
+        res.json({
+            producto: producto.nombre,
+            cantidadVendida,
+            totalInvertido: totalInvertido.toFixed(2),
+            totalGanado: totalGanado.toFixed(2)
+        });
+    } catch (error) {
+        console.error('Error al obtener detalles del producto:', error);
+        res.status(500).json({ error: 'Error al obtener detalles del producto' });
+    }
+});
+
 export default router;
-
-
