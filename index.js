@@ -80,9 +80,10 @@ const app = express();
 app.use(express.json());
 
 // Configura CORS
-const allowedOrigins = ['http://localhost:3000', 'https://envivo.top:9300', 'https://envivo.top'];
+const allowedOrigins = ['http://localhost:4000', 'https://envivo.top:9000', 'https://envivo.top','https://envivo.top:9700'];
 
-app.use(cors({
+app.use(cors())
+/* app.use(cors({
   origin: function(origin, callback) {
     // Permite solicitudes desde cualquier dominio si no se proporciona el encabezado 'Origin'
     if (!origin) return callback(null, true);
@@ -95,7 +96,7 @@ app.use(cors({
     return callback(null, true);
   },
   credentials: true // Permite enviar cookies en la solicitud
-}));
+})); */
 
 // Rutas
 app.use('/api/productos', productosRouter);
@@ -104,7 +105,7 @@ app.use('/api/reportes', reportesRouter);
 app.use('/api/stock', stockRoutes);
 app.use('/api/auth', authRouter);
 
-const PORT = process.env.PORT || 9000;
+const PORT = process.env.PORT || 9700;
 
 if (process.env.NODE_ENV === 'production') {  
     // Configuración HTTPS en producción
