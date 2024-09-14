@@ -1,10 +1,50 @@
 import express from 'express';
 import Producto from '../models/Producto.js';
 import Venta from '../models/Venta.js'
+import Inventario from '../models/Inventario.js';
 const router = express.Router();
 
 // Ruta para crear o actualizar un producto
 router.post('/crear', async (req, res) => {
+    try {
+        const { nombre, stock, precio_compra, precio_venta } = req.body;
+
+        // Validar los datos recibidos
+        if (precio_compra < 0 || precio_venta < 0) {
+            return res.status(400).json({ error: 'Los precios deben ser positivos.' });
+        }
+
+        let producto = await Producto.findOne({ where: { nombre } });
+
+        if (producto) {
+            // Si el producto existe, actualiza el stock y los precios
+            await Inventario.create({
+                producto_id: producto.id,
+                stock: producto.stock + stock,
+                fecha: new Date()
+            });
+            producto.stock += stock;
+            producto.precio_compra = precio_compra;
+            producto.precio_venta = precio_venta;
+            await producto.save();
+        } else {
+            // Si no existe, crea un nuevo producto
+            producto = await Producto.create({ nombre, stock, precio_compra, precio_venta });
+            await Inventario.create({
+                producto_id: producto.id,
+                stock: producto.stock,
+                fecha: new Date()
+            });
+        }
+
+        res.json(producto);
+    } catch (error) {
+        console.error('Error en la ruta /crear:', error);
+        res.status(500).json({ error: 'Error al crear o actualizar el producto' });
+    }
+});
+// Ruta para crear o actualizar un producto
+/* router.post('/crear', async (req, res) => {
     try {
         const { nombre, stock, precio_compra, precio_venta } = req.body;
 
@@ -31,7 +71,7 @@ router.post('/crear', async (req, res) => {
         console.error('Error en la ruta /crear:', error);
         res.status(500).json({ error: 'Error al crear o actualizar el producto' });
     }
-});
+}); */
 
 // Ruta para obtener todos los productos con su ganancia calculada
 router.get('/', async (req, res) => {
@@ -148,6 +188,64 @@ router.get('/detalles/:id', async (req, res) => {
     } catch (error) {
         console.error('Error al obtener detalles del producto:', error);
         res.status(500).json({ error: 'Error al obtener detalles del producto' });
+    }
+});
+
+// Ruta para obtener la cantidad total invertida basada en el historial de inventario
+router.get('/total-invertido-historico', async (req, res) => {
+    try {
+        const productos = await Producto.findAll();
+        let totalInvertido = 0;
+
+        for (const producto of productos) {
+            const historico = await Inventario.findAll({
+                where: { producto_id: producto.id },
+                order: [['fecha', 'ASC']]
+            });
+
+            historico.forEach(registro => {
+                totalInvertido += producto.precio_compra * registro.stock;
+            });
+        }
+
+        res.json({ totalInvertido: totalInvertido.toFixed(2) });
+    } catch (error) {
+        console.error('Error al obtener la cantidad total invertida histórica:', error);
+        res.status(500).json({ error: 'Error al obtener la cantidad total invertida histórica' });
+    }
+});
+
+
+// Ruta para obtener el precio de compra por el stock actual de cada producto y el total acumulado
+router.get('/precio-compra-stock', async (req, res) => {
+    try {
+        const productos = await Producto.findAll();
+
+        let totalAcumulado = 0;
+
+        const productosConStock = productos.map(producto => {
+            const stockActual = producto.stock; // Usa el stock del producto directamente
+
+            const totalInvertido = producto.precio_compra * stockActual;
+
+            totalAcumulado += totalInvertido;
+
+            return {
+                id: producto.id,
+                nombre: producto.nombre,
+                stockActual,
+                precioCompra: producto.precio_compra,
+                totalInvertido
+            };
+        });
+
+        res.json({
+            productos: productosConStock,
+            totalAcumulado: totalAcumulado.toFixed(2)
+        });
+    } catch (error) {
+        console.error('Error al obtener el precio de compra por stock:', error);
+        res.status(500).json({ error: 'Error al obtener el precio de compra por stock' });
     }
 });
 

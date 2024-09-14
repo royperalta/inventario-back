@@ -42,4 +42,17 @@ router.post('/logout', (req, res) => {
     res.status(200).json({ message: 'Sesión cerrada correctamente' });
 });
 
+// Ruta para obtener el perfil del usuario
+router.get('/profile', (req, res) => {
+    const token = req.headers.authorization?.split(' ')[1];
+    if (!token) return res.status(401).json({ message: 'No autorizado' });
+
+    try {
+        const decoded = jwt.verify(token, process.env.JWT_SECRET);
+        res.json(decoded);
+    } catch (error) {
+        res.status(401).json({ message: 'Token inválido' });
+    }
+});
+
 export default router;
