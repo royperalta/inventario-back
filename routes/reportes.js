@@ -1,6 +1,8 @@
 import express from 'express';
 import Venta from '../models/Venta.js';
 import Producto from '../models/Producto.js'; // Importar si necesitas usarlo
+import { Op } from 'sequelize';
+
 
 const router = express.Router();
 
@@ -88,6 +90,67 @@ router.get('/detalles-producto', async (req, res) => {
       console.error('Error al obtener detalles por producto:', error);
       res.status(500).json({ error: 'Error al obtener detalles por producto' });
   }
+});
+
+router.get('/ventas-por-dia', async (req, res) => {
+    try {
+        const { fecha } = req.query;
+
+        let inicioDia, finDia;
+
+        // Configura la zona horaria de Perú (UTC-5)
+        const zonaHorariaPeru = -5 * 60 * 60 * 1000; // -5 horas en milisegundos
+
+        if (fecha) {
+            // Si se pasa una fecha en el query param, convertirla a formato Date
+            const fechaSeleccionada = new Date(fecha);
+            if (isNaN(fechaSeleccionada)) {
+                return res.status(400).json({ error: 'Fecha inválida' });
+            }
+
+            inicioDia = new Date(fechaSeleccionada);
+            inicioDia.setUTCHours(0, 0, 0, 0); // Inicio del día a las 00:00 UTC
+            inicioDia = new Date(inicioDia.getTime() + zonaHorariaPeru); // Ajustar a Perú
+
+            finDia = new Date(fechaSeleccionada);
+            finDia.setUTCHours(23, 59, 59, 999); // Fin del día a las 23:59:59 UTC
+            finDia = new Date(finDia.getTime() + zonaHorariaPeru); // Ajustar a Perú
+        } else {
+            // Si no se pasa una fecha, usar el día actual
+            const hoy = new Date();
+            inicioDia = new Date(hoy);
+            inicioDia.setUTCHours(0, 0, 0, 0); // Inicio del día a las 00:00 UTC
+            inicioDia = new Date(inicioDia.getTime() + zonaHorariaPeru); // Ajustar a Perú
+
+            finDia = new Date(hoy);
+            finDia.setUTCHours(23, 59, 59, 999); // Fin del día a las 23:59:59 UTC
+            finDia = new Date(finDia.getTime() + zonaHorariaPeru); // Ajustar a Perú
+        }
+
+        // Buscar todas las ventas en el rango de fechas
+        const ventas = await Venta.findAll({
+            where: {
+                createdAt: {
+                    [Op.between]: [inicioDia, finDia], // Ventas entre el inicio y fin del día
+                },
+            },
+            include: {
+                model: Producto,
+                attributes: ['nombre', 'precio_compra'], // Puedes añadir más campos si lo deseas
+            },
+        });
+
+        // Sumar el total vendido en el día consultado
+        const totalVendidoDia = ventas.reduce((total, venta) => total + venta.total, 0);
+
+        res.json({
+            ventas,
+            totalVendidoDia: totalVendidoDia.toFixed(2), // Formato a 2 decimales
+        });
+    } catch (error) {
+        console.error('Error al obtener las ventas por día:', error);
+        res.status(500).json({ error: 'Error al obtener las ventas por día' });
+    }
 });
 
 
