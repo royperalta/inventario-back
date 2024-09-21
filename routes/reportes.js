@@ -22,7 +22,7 @@ router.get('/total-invertido', async (req, res) => {
       const ventas = await Venta.findAll({
           include: {
               model: Producto,
-              attributes: ['precio_compra']
+              attributes: ['precio_compra'] 
           }
       });
 
